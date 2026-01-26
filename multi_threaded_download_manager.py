@@ -571,3 +571,63 @@ Features:
 * Batch downloads from file
 * Interactive shell interface
 """
+
+"""
+System Design Components
+
+* Master Thread (Producer): Initializes the download manager, reads the list of target URLs, and populates a task queue.
+* Download Worker (Consumer): Multiple independent threads that wait for tasks from the queue. Each worker:
+* Acquires a Semaphore to stay within bandwidth/resource limits.
+* Uses a library like requests or urllib to fetch file chunks or complete files.
+* Writes the data to the local file system.
+* Releases the semaphore upon completion to allow the next thread to start.
+* Shared Task Queue: A thread-safe data structure that holds the URLs pending download.
+* Status Reporter (Optional): A thread or routine that monitors the progress of individual worker threads to update a global progress bar or log
+"""
+
+"""
+Design Diagram Flow
+[ Input URLs ]  -->  [ Master Thread ]
+                            |
+                            V
+                    [ Task Queue (FIFO) ]
+                            |
+      ______________________|______________________
+     |                      |                      |
+[ Worker 1 ]           [ Worker 2 ]           [ Worker N ]
+     |                      |                      |
+[ Semaphore (Limit) ]  [ Semaphore (Limit) ]  [ Semaphore (Limit) ]
+     |                      |                      |
+[ HTTP Request ]       [ HTTP Request ]       [ HTTP Request ]
+     |                      |                      |
+[ File System ]        [ File System ]        [ File System ]
+"""
+
+"""
+Key Mechanisms
+Concurrency Control: The script uses a Semaphore or ThreadPoolExecutor to define the maximum number of simultaneous connections, preventing the system from being overwhelmed by too many threads.
+Chunking: To maximize bandwidth, some managers split a single file into chunks, with different threads downloading specific byte ranges simultaneously.
+Synchronization: The join() method ensures the master thread waits for all worker threads to complete before finalizing the process and exiting
+"""
+
+"""
+ThreadPoolExecutor and Semaphore work together to manage concurrency and system resources. 
+1. ThreadPoolExecutor: The Thread Manager
+The ThreadPoolExecutor (from the concurrent.futures module) acts as a high-level manager for worker threads. 
+i. Worker Pool: It maintains a set number of reusable worker threads. Instead of creating and destroying a new thread for every download, it assigns new tasks to idle threads from this pool.
+ii. Task Scheduling: You "submit" download tasks (functions) to the executor. It handles the queuing and execution automatically.
+iii. Result Handling: It returns Future objects, which allow the main program to check if a download is finished, wait for all downloads to complete, or retrieve specific results/errors. 
+2. Semaphore: The Traffic Controller
+While a ThreadPoolExecutor limits the number of threads, a Semaphore (from the threading module) limits the number of threads allowed to perform a specific action simultaneously. 
+i. Resource Throttling: In a download manager, a semaphore is often used to limit active network connections. For example, if you have 10 threads but only want 3 active downloads to avoid bandwidth congestion, you use a semaphore with a value of 3.
+ii. Acquire and Release:
+Acquire: Before starting a download, a thread must "acquire" the semaphore. if the limit (count) is reached, the thread blocks and waits.
+Release: Once the download is finished, the thread "releases" the semaphore, allowing the next waiting thread to proceed. 
+
+Summary of Differences
+Feature 	ThreadPoolExecutor	Semaphore
+Primary Goal	Efficiently manage and reuse worker threads.	Limit concurrent access to a shared resource (e.g., bandwidth).
+Mechanism	Queues tasks and assigns them to an available pool.	Uses a counter to block or allow threads based on a set limit.
+Output	Returns Future objects for tracking task status.	Does not track tasks; only manages access permits.
+By combining them, the script ensures that while many threads may be "ready" to work, only a controlled number are actively consuming network resources at any given time
+"""
