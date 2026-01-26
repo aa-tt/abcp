@@ -631,3 +631,82 @@ Mechanism	Queues tasks and assigns them to an available pool.	Uses a counter to 
 Output	Returns Future objects for tracking task status.	Does not track tasks; only manages access permits.
 By combining them, the script ensures that while many threads may be "ready" to work, only a controlled number are actively consuming network resources at any given time
 """
+
+"""
+@contextmanager is a decorator from the standard contextlib module that allows you to create custom context managers using a simple generator function instead of a full class. 
+A context manager is a tool that ensures resources are properly set up and torn down (cleaned up), typically used with the with statement. 
+
+How It Works
+Instead of implementing a class with __enter__ and __exit__ methods, you write a single generator function with one yield statement: 
+Setup Logic: Everything before the yield runs when you enter the with block.
+The Resource: The value provided by yield is assigned to the variable after the as keyword.
+Teardown Logic: Everything after the yield runs when you exit the with block, even if an error occurred inside the block. 
+
+Basic Example
+from contextlib import contextmanager
+
+@contextmanager
+def managed_resource():
+    print("Step 1: Setting up resource")
+    resource = "MY_RESOURCE"
+    try:
+        yield resource  # The 'with' block runs here
+    finally:
+        print("Step 3: Cleaning up resource")
+
+# Usage
+with managed_resource() as res:
+    print(f"Step 2: Using {res}")
+Use code with caution.
+
+Key Benefits
+
+* Reduces Boilerplate: Replaces verbose try...finally logic or entire class definitions with a few lines of code.
+* Safety: Guarantees that cleanup code (like closing a file or database connection) runs even if an exception is raised.
+* Readability: Clearly separates the "what" (your code) from the "how" (managing resources like files, locks, or network connections). 
+
+Use Cases in 2026
+
+* File Management: Automatically closing files.
+* Database Connections: Ensuring connections are closed after queries.
+* Timing Code: Measuring the duration of a specific block of code.
+* Locking: Managing thread synchronization by automatically releasing locks. 
+"""
+
+"""
+Key Classes and Relationships
+
+* DownloadTask (Data Class): A specialized data class (using the @dataclass decorator) that stores essential information for each download, such as the URL, local destination path, and current status.
+* DownloadManager: The orchestrator that manages the overall lifecycle. It initializes the ThreadPoolExecutor and manages a shared Semaphore to throttle network traffic.
+* Worker (Inner or Logical Class): While often implemented as a method within the manager or a separate function, it acts as the execution unit. It interacts with the Semaphore to ensure safe concurrent access.
+* DownloadResult: A simple structure used to communicate success, failure, or file sizes back to the main thread.
+
+Structural Overview
+
++-----------------------+           +-----------------------+
+|     DownloadTask      |           |    DownloadManager    |
++-----------------------+           +-----------------------+
+| - url: str            |           | - max_workers: int    |
+| - dest_path: str      |           | - semaphore: Semaphore|
+| - status: str         |<>-------->| - tasks: List[Task]   |
++-----------------------+           +-----------------------+
+| + update_status()     |           | + add_task(url, path) |
++-----------------------+           | + start_all()         |
+                                    | + get_progress()      |
+                                    +-----------+-----------+
+                                                |
+                                                | (manages)
+                                                V
+                                    +-----------------------+
+                                    |        Worker         |
+                                    +-----------------------+
+                                    | + download_chunk()    |
+                                    | + handle_response()   |
+                                    +-----------------------+
+
+Class Interactions
+
+*Composition: The DownloadManager maintains a collection of DownloadTask objects.
+*Concurrency: The DownloadManager uses a ThreadPoolExecutor to dispatch Worker routines across available CPU threads.
+*Encapsulation: By using a @dataclass for DownloadTask, the script keeps state management clean and separates it from the complex logic of handling HTTP requests and file I/O found in the manager and workers.
+"""
