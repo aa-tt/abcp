@@ -13,7 +13,9 @@ How to run on macOS (Terminal):
        Or, with conda instead of pip/venv:
            conda create -n photo_sorter python=3.11 -y
            conda activate photo_sorter
-           conda install -c conda-forge opencv numpy -y
+           conda install -c conda-forge numpy pip -y
+           pip install opencv-python
+       (conda-forge's "opencv" package may lack cv2.data/CascadeClassifier; use pip's opencv-python.)
     5. Run the script:
            python3 photo_sorter.py
     6. When prompted, enter the folder to analyze (drag the folder into Terminal to paste its path),
@@ -62,9 +64,17 @@ def move_file(src, dest_dir):
 
 class HumanDetector:
     def __init__(self):
-        self.face = cv2.CascadeClassifier(
-            os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
-        )
+        self.face = None
+        try:
+            face = cv2.CascadeClassifier(
+                os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml")
+            )
+            if not face.empty():
+                self.face = face
+        except AttributeError:
+            pass
+        if self.face is None:
+            print("Face detector unavailable in this OpenCV build; using person detector only.")
         self.hog = cv2.HOGDescriptor()
         self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
 
@@ -78,10 +88,11 @@ class HumanDetector:
         if scale < 1:
             img = cv2.resize(img, (int(w * scale), int(h * scale)))
 
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        faces = self.face.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-        if len(faces) > 0:
-            return True
+        if self.face is not None:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            faces = self.face.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
+            if len(faces) > 0:
+                return True
 
         people, weights = self.hog.detectMultiScale(img, winStride=(8, 8), padding=(8, 8), scale=1.05)
         return any(float(wt) > 0.5 for wt in np.ravel(weights)) if len(people) else False
