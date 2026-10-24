@@ -22,6 +22,15 @@ How to run on macOS (Terminal):
        e.g. /Users/<you>/Pictures/Trip, then type y to confirm.
 
 Files are moved (not copied) into subfolders of the chosen folder; test on a copy first.
+
+SQLite:
+    No install needed: sqlite3 ships with Python (python.org, Homebrew and conda builds).
+    Verify:  python3 -c "import sqlite3; print(sqlite3.sqlite_version)"
+    Hashes are stored in <chosen folder>/.photo_hashes.db while running; if a run is interrupted,
+    just rerun on the same folder to resume. The file is deleted after a successful run.
+    Optional, inspect it with the sqlite3 CLI preinstalled on macOS:
+           sqlite3 "/path/to/folder/.photo_hashes.db" "SELECT hash, COUNT(*) FROM photos GROUP BY hash HAVING COUNT(*) > 1;"
+    To start over from scratch, delete it:  rm "/path/to/folder/.photo_hashes.db"
 """
 import hashlib
 import os
