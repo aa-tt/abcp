@@ -33,6 +33,11 @@ try:
 except ImportError:
     cv2 = None
 
+if cv2 is not None and not hasattr(cv2, "HOGDescriptor"):
+    # An empty leftover cv2 folder or a local cv2.py can shadow the real OpenCV
+    print(f"Broken OpenCV import, loaded from: {getattr(cv2, '__file__', None) or list(getattr(cv2, '__path__', []))}")
+    cv2 = None
+
 PIC_EXTS = {".jpg", ".jpeg", ".png"}
 VIDEO_EXTS = {".mp4"}
 
